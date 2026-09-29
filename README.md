@@ -1,0 +1,163 @@
+# COMP5521 Lab 4: A Simple HTLC Swap on Sepolia
+
+This classroom demo builds on Lab 3 and uses the `MySimpleToken` (MST) contract already deployed on Ethereum Sepolia. Alice and Bob use two Sepolia accounts to exchange MST and native Sepolia ETH through one small HTLC contract. The balances and transactions are real Sepolia state.
+
+This is a single-chain teaching exercise, not a complete cross-chain protocol. The final project can extend the ideas to separate chains, for example MST on Ethereum Sepolia and ETH on Arbitrum Sepolia. No bridge or contract here communicates across chains.
+
+## Swap flow
+
+```text
+Alice locks MST for Bob ─┐
+                         ├─ same hashlock / secret
+Bob locks ETH for Alice ┘
+
+Alice claims ETH and reveals the secret on Sepolia.
+Bob uses that secret to claim MST on Sepolia.
+```
+
+The contract also has a timeout refund function. It is not used in the classroom happy path; after a swap's timelock, only its original sender can refund that swap.
+
+## Prerequisites
+
+- Node.js LTS and npm.
+- Two disposable MetaMask accounts with Sepolia enabled. Alice is configured as signer 0 and Bob as signer 1.
+- Sepolia ETH in both accounts for gas; Bob also needs enough Sepolia ETH to lock the demo amount.
+- The deployed Lab 3 `MySimpleToken` address and enough MST in Alice's account.
+- A Sepolia RPC endpoint, for example from [Infura](https://app.infura.io/key/active-endpoints).
+- Never use mainnet accounts or commit private keys. A blockchain transaction and revealed secret are public and irreversible.
+
+## 1. Install and configure
+
+> Windows PowerShell note: if your computer blocks `npx.ps1`, replace `npx` in the commands below with `npx.cmd` (for example, `npx.cmd hardhat compile`).
+
+```bash
+npm install
+```
+
+Copy `.env.example` to `.env`, then set the RPC URL, both test-account private keys and addresses, and the Lab 3 token address:
+
+```env
+SEPOLIA_RPC_URL="https://sepolia.infura.io/v3/YOUR_PROJECT_ID"
+ALICE_PRIVATE_KEY="ALICE_TESTNET_PRIVATE_KEY"
+BOB_PRIVATE_KEY="BOB_TESTNET_PRIVATE_KEY"
+ALICE_ADDRESS="ALICE_METAMASK_ADDRESS"
+BOB_ADDRESS="BOB_METAMASK_ADDRESS"
+MST_ADDRESS="LAB3_MST_ADDRESS_ON_SEPOLIA"
+```
+
+`ETHERSCAN_API_KEY` is optional and only used if you choose to verify the contract source. It is not needed to compile, deploy, or use the demo.
+
+Compile and run local tests:
+
+```bash
+npx hardhat compile
+npx hardhat test
+```
+
+## 2. Deploy the HTLC
+
+Deploy the single `SimpleHTLC` contract to Sepolia using Alice's account:
+
+```bash
+npx hardhat run scripts/deploySimpleHTLC.js --network sepolia
+```
+
+Copy the printed address into `.env`:
+
+```env
+SEPOLIA_SIMPLE_HTLC_ADDRESS="0x..."
+```
+
+## 3. Generate a secret and hashlock
+
+```bash
+npx hardhat run scripts/generateSecret.js
+```
+
+Copy both printed values into `.env`. Keep `SWAP_PREIMAGE` private until Alice claims ETH. Both locks use `SWAP_HASHLOCK`.
+
+```env
+SWAP_PREIMAGE="0x..."
+SWAP_HASHLOCK="0x..."
+```
+
+## 4. Check starting balances
+
+```bash
+npx hardhat run scripts/checkBalances.js --network sepolia
+```
+
+Record Alice and Bob's MST and ETH balances. Gas fees will also change each sender's ETH balance.
+
+## 5. Lock MST and ETH
+
+Alice approves the HTLC contract to use MST, then locks MST for Bob:
+
+```bash
+npx hardhat run scripts/lockMST.js --network sepolia
+```
+
+Copy `MST_SWAP_ID` from the output into `.env`.
+
+Bob locks native ETH for Alice:
+
+```bash
+npx hardhat run scripts/lockETH.js --network sepolia
+```
+
+Copy `ETH_SWAP_ID` from the output into `.env`. Both commands create a separate on-chain lock with the same hashlock.
+
+Inspect the lock records and current balances:
+
+```bash
+npx hardhat run scripts/checkSwap.js --network sepolia
+npx hardhat run scripts/checkBalances.js --network sepolia
+```
+
+The locked assets are held by `SimpleHTLC`; balances in Alice's and Bob's wallets have decreased.
+
+## 6. Claim the assets
+
+Alice claims Bob's locked ETH using the secret. This transaction reveals the preimage publicly:
+
+```bash
+npx hardhat run scripts/claimETH.js --network sepolia
+```
+
+Bob then uses the same preimage to claim Alice's MST:
+
+```bash
+npx hardhat run scripts/claimMST.js --network sepolia
+```
+
+Check the final swap status and wallet balances:
+
+```bash
+npx hardhat run scripts/checkSwap.js --network sepolia
+npx hardhat run scripts/checkBalances.js --network sepolia
+```
+
+Alice should have received ETH and Bob should have received MST. Compare with the starting balances; account for gas costs on ETH balances.
+
+## Timeout refund (not part of the classroom demo)
+
+If a receiver does not claim before the timelock, wait until the timelock has passed. The original sender can then run the matching refund script:
+
+```bash
+npx hardhat run scripts/refundMST.js --network sepolia
+npx hardhat run scripts/refundETH.js --network sepolia
+```
+
+Only run the command for a swap that has expired and was not claimed. Never share the sender's private key.
+
+## Project files
+
+- `contracts/SimpleHTLC.sol`: one contract that escrows either ERC20 MST or native ETH, checks the hashlock on claim, and supports sender-only timeout refunds.
+- `scripts/deploySimpleHTLC.js`: deploys the contract on Sepolia.
+- `scripts/generateSecret.js`: generates a random preimage and its hashlock locally.
+- `scripts/lockMST.js` and `scripts/lockETH.js`: approve and lock the two assets.
+- `scripts/claimETH.js` and `scripts/claimMST.js`: claim each asset with the preimage.
+- `scripts/checkSwap.js` and `scripts/checkBalances.js`: inspect on-chain swap states and wallet balances.
+- `scripts/refundMST.js` and `scripts/refundETH.js`: timeout recovery scripts.
+- `test/SimpleHTLC.js`: local tests for the two asset paths and timeout refund.
+- `contracts/TestToken.sol`: local test token only; the Sepolia demo uses the Lab 3 MST deployment.
