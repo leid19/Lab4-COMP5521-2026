@@ -13,7 +13,7 @@ async function main() {
   await lockTx.wait();
   console.log(`ETH lock transaction: ${lockTx.hash}`);
   console.log(`Add to .env: ETH_SWAP_ID=${id}`);
-  console.log(`Refund available after: ${new Date(timelock * 1000).toISOString()}`);
+  console.log(`Claim deadline: ${new Date(timelock * 1000).toISOString()}`);
 }
 
 main().catch((error) => { console.error(error.message || error); process.exitCode = 1; });

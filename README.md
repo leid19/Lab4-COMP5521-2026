@@ -15,7 +15,7 @@ Alice claims ETH and reveals the secret on Sepolia.
 Bob uses that secret to claim MST on Sepolia.
 ```
 
-The contract also has a timeout refund function. It is not used in the classroom happy path; after a swap's timelock, only its original sender can refund that swap.
+> **Classroom scope:** this lesson only demonstrates both parties completing the exchange before the timelock expires. Timeout refunds are not covered, and this simplified contract has no refund function. If a lock expires before it is claimed, its assets remain locked in the contract. Use only small testnet amounts and follow the steps carefully.
 
 ## Prerequisites
 
@@ -139,25 +139,13 @@ npx hardhat run scripts/checkBalances.js --network sepolia
 
 Alice should have received ETH and Bob should have received MST. Compare with the starting balances; account for gas costs on ETH balances.
 
-## Timeout refund (not part of the classroom demo)
-
-If a receiver does not claim before the timelock, wait until the timelock has passed. The original sender can then run the matching refund script:
-
-```bash
-npx hardhat run scripts/refundMST.js --network sepolia
-npx hardhat run scripts/refundETH.js --network sepolia
-```
-
-Only run the command for a swap that has expired and was not claimed. Never share the sender's private key.
-
 ## Project files
 
-- `contracts/SimpleHTLC.sol`: one contract that escrows either ERC20 MST or native ETH, checks the hashlock on claim, and supports sender-only timeout refunds.
+- `contracts/SimpleHTLC.sol`: one minimal classroom contract that escrows either ERC20 MST or native ETH and checks the hashlock and timelock on claim.
 - `scripts/deploySimpleHTLC.js`: deploys the contract on Sepolia.
 - `scripts/generateSecret.js`: generates a random preimage and its hashlock locally.
 - `scripts/lockMST.js` and `scripts/lockETH.js`: approve and lock the two assets.
 - `scripts/claimETH.js` and `scripts/claimMST.js`: claim each asset with the preimage.
 - `scripts/checkSwap.js` and `scripts/checkBalances.js`: inspect on-chain swap states and wallet balances.
-- `scripts/refundMST.js` and `scripts/refundETH.js`: timeout recovery scripts.
-- `test/SimpleHTLC.js`: local tests for the two asset paths and timeout refund.
+- `test/SimpleHTLC.js`: local test for the two asset paths and shared-secret claim flow.
 - `contracts/TestToken.sol`: local test token only; the Sepolia demo uses the Lab 3 MST deployment.

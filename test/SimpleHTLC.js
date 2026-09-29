@@ -29,18 +29,4 @@ describe("SimpleHTLC", function () {
     expect((await htlc.swaps(mstId)).claimed).to.equal(true);
     expect((await htlc.swaps(ethId)).claimed).to.equal(true);
   });
-
-  it("returns an expired MST lock only to its sender", async function () {
-    const { alice, bob, token, htlc, hashlock } = await setup();
-    const amount = ethers.parseUnits("10", 18);
-    const id = ethers.keccak256(ethers.toUtf8Bytes("refund-swap"));
-    const now = (await ethers.provider.getBlock("latest")).timestamp;
-    await token.approve(await htlc.getAddress(), amount);
-    await htlc.createERC20Swap(id, bob.address, await token.getAddress(), amount, hashlock, now + 60);
-    await ethers.provider.send("evm_increaseTime", [61]);
-    await ethers.provider.send("evm_mine");
-    await expect(htlc.refund(id)).to.emit(htlc, "SwapRefunded");
-    expect((await htlc.swaps(id)).refunded).to.equal(true);
-    expect(await token.balanceOf(alice.address)).to.equal(ethers.parseUnits("1000", 18));
-  });
 });

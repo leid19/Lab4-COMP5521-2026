@@ -22,7 +22,7 @@ async function main() {
   console.log(`MST approval transaction: ${approveTx.hash}`);
   console.log(`MST lock transaction: ${lockTx.hash}`);
   console.log(`Add to .env: MST_SWAP_ID=${id}`);
-  console.log(`Refund available after: ${new Date(timelock * 1000).toISOString()}`);
+  console.log(`Claim deadline: ${new Date(timelock * 1000).toISOString()}`);
 }
 
 main().catch((error) => { console.error(error.message || error); process.exitCode = 1; });

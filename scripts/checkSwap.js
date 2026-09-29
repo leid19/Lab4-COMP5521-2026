@@ -10,7 +10,7 @@ async function printSwap(name) {
     amount: swap.amount.toString(), hashlock: swap.hashlock,
     timelock: new Date(Number(swap.timelock) * 1000).toISOString(),
     assetType: swap.assetType === 0n ? "MST (ERC20)" : "ETH",
-    claimed: swap.claimed, refunded: swap.refunded
+    claimed: swap.claimed
   }, null, 2));
 }
 
